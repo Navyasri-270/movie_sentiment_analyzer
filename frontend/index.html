@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentiFilm AI — Movie Sentiment Analyzer</title>
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="background-radial"></div>
+    <div class="background-dots"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-clapperboard logo-icon"></i>
+                <h1>SentiFilm<span>AI</span></h1>
+            </div>
+            <p class="subtitle">IMDb Movie Review Sentiment Analyzer & Model Comparison Dashboard</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="single-analysis">
+                <i class="fa-solid fa-magnifying-glass"></i> Single Analysis
+            </button>
+            <button class="tab-btn" data-tab="batch-analysis">
+                <i class="fa-solid fa-file-csv"></i> Batch CSV Analysis
+            </button>
+            <button class="tab-btn" id="metrics-tab-btn" data-tab="model-metrics">
+                <i class="fa-solid fa-chart-line"></i> Model Performance
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <!-- TAB 1: Single Analysis -->
+            <section id="single-analysis" class="tab-pane active">
+                <div class="grid-layout">
+                    <!-- Left: Review Input -->
+                    <div class="card glass-card input-section">
+                        <h2><i class="fa-regular fa-comment-dots"></i> Enter Movie Review</h2>
+                        <p class="card-desc">Type or paste a movie review below to run sentiment analysis.</p>
+                        
+                        <div class="input-wrapper">
+                            <textarea id="review-input" placeholder="e.g., The acting was top-notch and the story kept me on the edge of my seat! Highly recommended..." maxlength="10000"></textarea>
+                            <div class="char-count"><span id="char-current">0</span> / 10,000</div>
+                        </div>
+
+                        <div class="action-row">
+                            <button id="analyze-btn" class="btn btn-primary">
+                                <span>Analyze Sentiment</span>
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </button>
+                            <button id="clear-btn" class="btn btn-secondary">
+                                <i class="fa-solid fa-trash-can"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Prediction Output -->
+                    <div class="results-column">
+                        <div class="card glass-card results-section empty-state" id="results-card">
+                            <div class="empty-placeholder">
+                                <i class="fa-solid fa-chart-bar placeholder-icon"></i>
+                                <h3>Waiting for Input</h3>
+                                <p>Enter a movie review and click Analyze to view predictions and compare models.</p>
+                            </div>
+                            
+                            <!-- Analysis Loader -->
+                            <div class="loader-wrapper hidden" id="analysis-loader">
+                                <div class="pulse-loader"></div>
+                                <p>Running inference models...</p>
+                            </div>
+
+                            <!-- Analysis Results (Shown post-inference) -->
+                            <div class="results-content hidden" id="results-content">
+                                <div class="results-header">
+                                    <h3>Analysis Results</h3>
+                                    <span class="badge" id="overall-badge">Positive</span>
+                                </div>
+
+                                <div class="models-comparison">
+                                    <!-- Model 1: Logistic Regression -->
+                                    <div class="model-result-card">
+                                        <div class="model-meta">
+                                            <span class="model-name">TF-IDF + Logistic Regression</span>
+                                            <span class="model-badge">Baseline</span>
+                                        </div>
+                                        <div class="sentiment-indicator positive" id="lr-sentiment-indicator">
+                                            <i class="fa-solid fa-face-smile" id="lr-sentiment-icon"></i>
+                                            <span class="sentiment-val" id="lr-sentiment-val">Positive</span>
+                                        </div>
+                                        <div class="confidence-container">
+                                            <div class="conf-labels">
+                                                <span>Confidence Score</span>
+                                                <span class="conf-percentage" id="lr-confidence-val">89.4%</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" id="lr-progress-fill" style="width: 89.4%;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Model 2: LSTM -->
+                                    <div class="model-result-card">
+                                        <div class="model-meta">
+                                            <span class="model-name">PyTorch LSTM</span>
+                                            <span class="model-badge deep">Deep Learning</span>
+                                        </div>
+                                        <div class="sentiment-indicator negative" id="lstm-sentiment-indicator">
+                                            <i class="fa-solid fa-face-frown" id="lstm-sentiment-icon"></i>
+                                            <span class="sentiment-val" id="lstm-sentiment-val">Negative</span>
+                                        </div>
+                                        <div class="confidence-container">
+                                            <div class="conf-labels">
+                                                <span>Confidence Score</span>
+                                                <span class="conf-percentage" id="lstm-confidence-val">76.8%</span>
+                                            </div>
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" id="lstm-progress-fill" style="width: 76.8%;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- History Section -->
+                        <div class="card glass-card history-section">
+                            <h3><i class="fa-solid fa-clock-rotate-left"></i> Analysis History</h3>
+                            <ul class="history-list" id="history-list">
+                                <li class="history-empty">No reviews analyzed yet.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Batch Analysis -->
+            <section id="batch-analysis" class="tab-pane">
+                <div class="card glass-card batch-card">
+                    <h2><i class="fa-solid fa-file-import"></i> CSV Batch Analysis</h2>
+                    <p class="card-desc">Upload a CSV file containing reviews. We will search for a column named 'review', 'text', or 'content' and perform sentiment predictions using both models.</p>
+
+                    <div class="upload-zone" id="upload-zone">
+                        <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                        <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                        <h3>Drag & drop your CSV file here</h3>
+                        <p>or <span class="file-browse-btn">browse files</span></p>
+                        <span class="file-format-info">Supported format: .csv (max 5MB)</span>
+                    </div>
+
+                    <div id="file-details" class="file-details-wrapper hidden">
+                        <div class="file-info">
+                            <i class="fa-regular fa-file-excel file-icon"></i>
+                            <div class="file-meta">
+                                <span class="file-name" id="selected-file-name">reviews.csv</span>
+                                <span class="file-size" id="selected-file-size">145 KB</span>
+                            </div>
+                        </div>
+                        <button id="batch-analyze-btn" class="btn btn-primary">
+                            <span>Process File</span>
+                            <i class="fa-solid fa-circle-play"></i>
+                        </button>
+                        <button id="cancel-file-btn" class="btn btn-secondary">Remove</button>
+                    </div>
+
+                    <!-- Batch Progress / Results -->
+                    <div id="batch-results-wrapper" class="batch-results-wrapper hidden">
+                        <div class="batch-loader" id="batch-loader">
+                            <div class="spinner"></div>
+                            <p>Analyzing reviews in CSV. Please wait...</p>
+                        </div>
+
+                        <div id="batch-results-content" class="hidden">
+                            <div class="results-table-header">
+                                <h3>Batch Processing Results (<span id="batch-total-count">0</span> reviews)</h3>
+                                <button id="download-csv-btn" class="btn btn-secondary">
+                                    <i class="fa-solid fa-download"></i> Download CSV Results
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Review Text</th>
+                                            <th>LR Prediction</th>
+                                            <th>LR Conf</th>
+                                            <th>LSTM Prediction</th>
+                                            <th>LSTM Conf</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="batch-results-body">
+                                        <!-- Dynamic Table Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: Model Metrics Dashboard -->
+            <section id="model-metrics" class="tab-pane">
+                <div class="metrics-grid">
+                    <!-- Column 1: Logistic Regression Metrics -->
+                    <div class="card glass-card metrics-card">
+                        <div class="card-header-with-badge">
+                            <h2>Baseline Model</h2>
+                            <span class="model-badge">TF-IDF + LR</span>
+                        </div>
+                        <p class="card-desc">Evaluated on the IMDb validation dataset.</p>
+
+                        <div class="metrics-stats-grid">
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lr-metric-acc">--</span>
+                                <span class="stat-label">Accuracy</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lr-metric-prec">--</span>
+                                <span class="stat-label">Precision</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lr-metric-rec">--</span>
+                                <span class="stat-label">Recall</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lr-metric-f1">--</span>
+                                <span class="stat-label">F1-Score</span>
+                            </div>
+                        </div>
+
+                        <div class="confusion-matrix-wrapper">
+                            <h3>Confusion Matrix</h3>
+                            <div class="matrix-grid-visual">
+                                <div class="matrix-cell label-cell"></div>
+                                <div class="matrix-cell header-cell">Predicted Neg</div>
+                                <div class="matrix-cell header-cell">Predicted Pos</div>
+                                
+                                <div class="matrix-cell header-cell row-header">Actual Neg</div>
+                                <div class="matrix-cell value-cell tn" id="lr-cm-tn">--</div>
+                                <div class="matrix-cell value-cell fp" id="lr-cm-fp">--</div>
+                                
+                                <div class="matrix-cell header-cell row-header">Actual Pos</div>
+                                <div class="matrix-cell value-cell fn" id="lr-cm-fn">--</div>
+                                <div class="matrix-cell value-cell tp" id="lr-cm-tp">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: LSTM Metrics -->
+                    <div class="card glass-card metrics-card">
+                        <div class="card-header-with-badge">
+                            <h2>Deep Learning Model</h2>
+                            <span class="model-badge deep">PyTorch LSTM</span>
+                        </div>
+                        <p class="card-desc">Evaluated on the IMDb validation dataset.</p>
+
+                        <div class="metrics-stats-grid">
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lstm-metric-acc">--</span>
+                                <span class="stat-label">Accuracy</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lstm-metric-prec">--</span>
+                                <span class="stat-label">Precision</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lstm-metric-rec">--</span>
+                                <span class="stat-label">Recall</span>
+                            </div>
+                            <div class="metric-stat-box">
+                                <span class="stat-value" id="lstm-metric-f1">--</span>
+                                <span class="stat-label">F1-Score</span>
+                            </div>
+                        </div>
+
+                        <div class="confusion-matrix-wrapper">
+                            <h3>Confusion Matrix</h3>
+                            <div class="matrix-grid-visual">
+                                <div class="matrix-cell label-cell"></div>
+                                <div class="matrix-cell header-cell">Predicted Neg</div>
+                                <div class="matrix-cell header-cell">Predicted Pos</div>
+                                
+                                <div class="matrix-cell header-cell row-header">Actual Neg</div>
+                                <div class="matrix-cell value-cell tn" id="lstm-cm-tn">--</div>
+                                <div class="matrix-cell value-cell fp" id="lstm-cm-fp">--</div>
+                                
+                                <div class="matrix-cell header-cell row-header">Actual Pos</div>
+                                <div class="matrix-cell value-cell fn" id="lstm-cm-fn">--</div>
+                                <div class="matrix-cell value-cell tp" id="lstm-cm-tp">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Error Alert Toast -->
+    <div id="toast" class="toast hidden">
+        <i class="fa-solid fa-circle-exclamation toast-icon"></i>
+        <span id="toast-message">Error processing review</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
