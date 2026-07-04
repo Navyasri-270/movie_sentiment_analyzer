@@ -126,8 +126,8 @@ function renderResults(data) {
     const lstmIndicator = document.getElementById('lstm-sentiment-indicator');
     const lstmIcon = document.getElementById('lstm-sentiment-icon');
 
-    // Overall Consensus (Prefer Deep Learning LSTM, fallback to LR if they match)
-    const consensusSentiment = data.lstm.sentiment;
+    // Overall Consensus (Prefer the highly accurate Logistic Regression baseline)
+    const consensusSentiment = data.lr.sentiment;
     overallBadge.textContent = consensusSentiment;
     overallBadge.className = `badge ${consensusSentiment.toLowerCase()}`;
 

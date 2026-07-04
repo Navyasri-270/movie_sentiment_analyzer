@@ -35,7 +35,15 @@ class SentimentLSTM(nn.Module):
         return self.sigmoid(out)
 
 # Constants & Preprocessing objects
-stop_words = set(stopwords.words('english'))
+negation_words = {
+    'not', 'no', 'never', 'neither', 'nor', 'but', 'only', 'against',
+    'don', 'dont', 't', 'ain', 'aren', 'arent', 'couldn', 'couldnt',
+    'didn', 'didnt', 'doesn', 'doesnt', 'hadn', 'hadnt', 'hasn', 'hasnt',
+    'haven', 'havent', 'isn', 'isnt', 'mightn', 'mightnt', 'mustn', 'mustnt',
+    'needn', 'neednt', 'shan', 'shant', 'shouldn', 'shouldnt', 'wasn', 'wasnt',
+    'weren', 'werent', 'won', 'wont', 'wouldn', 'wouldnt'
+}
+stop_words = set(stopwords.words('english')) - negation_words
 lemmatizer = WordNetLemmatizer()
 
 def clean_text(text):
@@ -112,7 +120,7 @@ class ModelPipeline:
         # This adds an elegant Neutral classification!
         if 0.45 <= prob <= 0.55:
             sentiment = "Neutral"
-            confidence = 1.0 - abs(prob - 0.5) * 2.0 # Higher confidence close to 0.5
+            confidence = max(prob, 1.0 - prob)
         elif prob > 0.55:
             sentiment = "Positive"
             confidence = prob
@@ -144,7 +152,7 @@ class ModelPipeline:
             
         if 0.45 <= prob <= 0.55:
             sentiment = "Neutral"
-            confidence = 1.0 - abs(prob - 0.5) * 2.0
+            confidence = max(prob, 1.0 - prob)
         elif prob > 0.55:
             sentiment = "Positive"
             confidence = prob

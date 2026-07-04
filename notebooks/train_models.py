@@ -129,7 +129,15 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-stop_words = set(stopwords.words('english'))
+negation_words = {
+    'not', 'no', 'never', 'neither', 'nor', 'but', 'only', 'against',
+    'don', 'dont', 't', 'ain', 'aren', 'arent', 'couldn', 'couldnt',
+    'didn', 'didnt', 'doesn', 'doesnt', 'hadn', 'hadnt', 'hasn', 'hasnt',
+    'haven', 'havent', 'isn', 'isnt', 'mightn', 'mightnt', 'mustn', 'mustnt',
+    'needn', 'neednt', 'shan', 'shant', 'shouldn', 'shouldnt', 'wasn', 'wasnt',
+    'weren', 'werent', 'won', 'wont', 'wouldn', 'wouldnt'
+}
+stop_words = set(stopwords.words('english')) - negation_words
 lemmatizer = WordNetLemmatizer()
 
 def preprocess_review(text):
