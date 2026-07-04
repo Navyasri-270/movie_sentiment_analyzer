@@ -2,9 +2,9 @@ services:
   - type: web
     name: movie-sentiment-analyzer-simple
     runtime: python
-    pythonVersion: 3.11.9
-    buildCommand: pip install -r requirements-simple.txt
+    pythonVersion: "3.11.9"
+    buildCommand: pip install --upgrade setuptools && pip install -r requirements-simple.txt
     startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: "3.11.9"
