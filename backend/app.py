@@ -39,10 +39,10 @@ app.add_middleware(
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: ReviewRequest):
-    if pipeline.lr_model is None or pipeline.lstm_model is None:
+    if pipeline.lr_model is None:
         raise HTTPException(
             status_code=503,
-            detail="Models not loaded/trained. Please run the training script first."
+            detail="Models not loaded. Please run the training script first."
         )
         
     text = request.text.strip()
@@ -63,10 +63,10 @@ def predict(request: ReviewRequest):
 
 @app.post("/predict-batch")
 async def predict_batch(file: UploadFile = File(...)):
-    if pipeline.lr_model is None or pipeline.lstm_model is None:
+    if pipeline.lr_model is None:
         raise HTTPException(
-            status_code=533,
-            detail="Models not loaded/trained. Please run training script first."
+            status_code=503,
+            detail="Models not loaded. Please run training script first."
         )
         
     if not file.filename.endswith('.csv'):

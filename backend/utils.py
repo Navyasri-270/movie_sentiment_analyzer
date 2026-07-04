@@ -7,8 +7,15 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
-import torch
-import torch.nn as nn
+
+# Optional torch import
+try:
+    import torch
+    import torch.nn as nn
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    nn = None
 
 # Ensure nltk packages are available
 nltk.download('stopwords', quiet=True)
@@ -17,22 +24,25 @@ nltk.download('omw-1.4', quiet=True)
 nltk.download('punkt', quiet=True)
 
 # PyTorch LSTM Model definition (must match training script)
-class SentimentLSTM(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, drop_prob=0.3):
-        super(SentimentLSTM, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers, 
-                            dropout=drop_prob, batch_first=True, bidirectional=False)
-        self.dropout = nn.Dropout(drop_prob)
-        self.fc = nn.Linear(hidden_dim, output_dim)
-        self.sigmoid = nn.Sigmoid()
-        
-    def forward(self, x):
-        embedded = self.embedding(x)
-        lstm_out, (hidden, cell) = self.lstm(embedded)
-        out = self.dropout(lstm_out[:, -1, :])
-        out = self.fc(out)
-        return self.sigmoid(out)
+if TORCH_AVAILABLE:
+    class SentimentLSTM(nn.Module):
+        def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, drop_prob=0.3):
+            super(SentimentLSTM, self).__init__()
+            self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
+            self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers, 
+                                dropout=drop_prob, batch_first=True, bidirectional=False)
+            self.dropout = nn.Dropout(drop_prob)
+            self.fc = nn.Linear(hidden_dim, output_dim)
+            self.sigmoid = nn.Sigmoid()
+            
+        def forward(self, x):
+            embedded = self.embedding(x)
+            lstm_out, (hidden, cell) = self.lstm(embedded)
+            out = self.dropout(lstm_out[:, -1, :])
+            out = self.fc(out)
+            return self.sigmoid(out)
+else:
+    SentimentLSTM = None
 
 # Constants & Preprocessing objects
 negation_words = {
@@ -68,7 +78,7 @@ class ModelPipeline:
         self.lr_model = None
         self.lstm_model = None
         self.vocab = None
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if TORCH_AVAILABLE else None
         
     def load_models(self):
         # 1. Load LR & Vectorizer
@@ -82,28 +92,31 @@ class ModelPipeline:
         else:
             raise FileNotFoundError("Baseline LR model or TF-IDF Vectorizer not found. Please train models first.")
             
-        # 2. Load LSTM Vocab & Model
-        vocab_path = os.path.join(self.models_dir, 'vocab.json')
-        lstm_path = os.path.join(self.models_dir, 'lstm_model.pth')
-        
-        if os.path.exists(vocab_path) and os.path.exists(lstm_path):
-            with open(vocab_path, 'r') as f:
-                self.vocab = json.load(f)
+        # 2. Load LSTM Vocab & Model (only if torch is available)
+        if TORCH_AVAILABLE:
+            vocab_path = os.path.join(self.models_dir, 'vocab.json')
+            lstm_path = os.path.join(self.models_dir, 'lstm_model.pth')
             
-            # Recreate model structure
-            self.lstm_model = SentimentLSTM(
-                vocab_size=len(self.vocab),
-                embedding_dim=100,
-                hidden_dim=64,
-                output_dim=1,
-                n_layers=1
-            )
-            self.lstm_model.load_state_dict(torch.load(lstm_path, map_location=self.device))
-            self.lstm_model.to(self.device)
-            self.lstm_model.eval()
-            print("Loaded LSTM model and vocabulary successfully.")
+            if os.path.exists(vocab_path) and os.path.exists(lstm_path):
+                with open(vocab_path, 'r') as f:
+                    self.vocab = json.load(f)
+                
+                # Recreate model structure
+                self.lstm_model = SentimentLSTM(
+                    vocab_size=len(self.vocab),
+                    embedding_dim=100,
+                    hidden_dim=64,
+                    output_dim=1,
+                    n_layers=1
+                )
+                self.lstm_model.load_state_dict(torch.load(lstm_path, map_location=self.device))
+                self.lstm_model.to(self.device)
+                self.lstm_model.eval()
+                print("Loaded LSTM model and vocabulary successfully.")
+            else:
+                print("LSTM model or Vocab not found. Will run with Logistic Regression only.")
         else:
-            raise FileNotFoundError("LSTM model or Vocab not found. Please train models first.")
+            print("PyTorch not available. Running with Logistic Regression only.")
             
     def predict_lr(self, processed_text):
         if self.lr_model is None or self.vectorizer is None:
@@ -131,8 +144,9 @@ class ModelPipeline:
         return sentiment, float(confidence)
 
     def predict_lstm(self, processed_text):
-        if self.lstm_model is None or self.vocab is None:
-            raise RuntimeError("LSTM model is not loaded.")
+        if not TORCH_AVAILABLE or self.lstm_model is None or self.vocab is None:
+            # Return LR prediction as fallback if LSTM not available
+            return self.predict_lr(processed_text)
             
         # Tokenize and Pad
         seq = []
